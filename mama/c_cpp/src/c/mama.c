@@ -28,6 +28,7 @@
 #include "wombat/strutils.h"
 
 #include <mama/mama.h>
+#include <mama/msg.h>
 #include <mama/error.h>
 #include <mamainternal.h>
 #include <mama/version.h>
@@ -168,6 +169,7 @@ typedef struct mamaImpl_
     mamaPayloadBridge      myPayloads[MAMA_PAYLOAD_MAX];
     LIB_HANDLE             myBridgeLibraries[MAMA_MIDDLEWARE_MAX];
     LIB_HANDLE             myPayloadLibraries[MAMA_PAYLOAD_MAX];
+    msgPayload_destroyImpl myPayloadDestroyFuncs[MAMA_PAYLOAD_MAX];
     unsigned int           myRefCount;
     wthread_static_mutex_t myLock;
 } mamaImpl;
@@ -175,7 +177,7 @@ typedef struct mamaImpl_
 static mamaApplicationContext  appContext;
 static char mama_ver_string[256];
 
-static mamaImpl gImpl = {{0}, {0}, {0}, {0}, 0, WSTATIC_MUTEX_INITIALIZER};
+static mamaImpl gImpl = {{0}, {0}, {0}, {0}, {0}, 0, WSTATIC_MUTEX_INITIALIZER};
 
 /* ************************************************************************* */
 /* Private Function Prototypes. */
@@ -624,10 +626,21 @@ mamaInternal_findBridge ()
 mamaPayloadBridge
 mamaInternal_findPayload (char id)
 {
+    mamaPayloadBridge bridge = NULL;
+
     if ('\0' == id)
         return NULL;
 
-    return gImpl.myPayloads[(uint8_t)id];
+    bridge = gImpl.myPayloads[(uint8_t)id];
+
+    if (NULL == bridge)
+    {
+        /* Dynamically load the payload bridge just-in-time, if it hasn't 
+         * already been loaded previously. */
+        mama_loadPayloadBridgeByType (&bridge, (mamaPayloadType)id);
+    }
+
+    return bridge;
 }
 
 mamaPayloadBridge
@@ -1241,17 +1254,33 @@ mama_closeCount (unsigned int* count)
 
         cleanupReservedFields();
 
-         /* Look for a bridge for each of the payloads and close them */
+        /* Look for a bridge for each of the payloads and close them */
         for (payload = 0; payload != MAMA_PAYLOAD_MAX; ++payload)
         {
-        	/* mamaPayloadBridgeImpl* impl = (mamaPayloadBridgeImpl*)
-             * gImpl.myPayloads [(uint8_t)payload];*/
-            gImpl.myPayloads[(uint8_t)payload] = NULL;
-            if(gImpl.myPayloadLibraries[(uint8_t)payload])
+            uint8_t                id   = (uint8_t)payload;
+            LIB_HANDLE             lib  = gImpl.myPayloadLibraries[id];
+            mamaPayloadBridgeImpl* impl = gImpl.myPayloads[id];
+
+            if (!lib)
             {
-                closeSharedLib (gImpl.myPayloadLibraries[(uint8_t)payload]);
-                gImpl.myPayloadLibraries[(uint8_t)payload] = NULL;
+                continue;
             }
+
+            if (impl)
+            {
+                msgPayload_destroyImpl destroyFunc = 
+                    gImpl.myPayloadDestroyFuncs[id];
+
+                if (destroyFunc)
+                {
+                    destroyFunc (impl);
+                }
+
+                gImpl.myPayloads[id] = NULL;
+            }
+
+            closeSharedLib (lib);
+            gImpl.myPayloadLibraries[id] = NULL;
         }
         
        gDefaultPayload = NULL;
@@ -1827,18 +1856,29 @@ mama_setDefaultPayload (char id)
 
 mama_status
 mama_loadPayloadBridge (mamaPayloadBridge* impl,
-                         const char*        payloadName)
+                        const char*        payloadName)
 {
     return mama_loadPayloadBridgeInternal (impl, payloadName);
 }
+
+mama_status
+mama_loadPayloadBridgeByType (mamaPayloadBridge* impl,
+                              mamaPayloadType    payload)
+{
+    const char* name = mamaPayload_convertToLibString (payload);
+    return mama_loadPayloadBridgeInternal (impl, name);
+}
+
 mama_status
 mama_loadPayloadBridgeInternal  (mamaPayloadBridge* impl,
                                  const char*        payloadName)
 {
     char                    bridgeImplName  [256];
     char                    initFuncName    [256];
+    char                    destroyFuncName [256];
     LIB_HANDLE              bridgeLib       = NULL;
     msgPayload_createImpl   initFunc        = NULL;
+    msgPayload_destroyImpl  destroyFunc     = NULL;
     mama_status             status          = MAMA_STATUS_OK;
     char                    payloadChar 	='\0';
 	void*					vp				= NULL;
@@ -1865,11 +1905,10 @@ mama_loadPayloadBridgeInternal  (mamaPayloadBridge* impl,
         return MAMA_STATUS_NO_BRIDGE_IMPL;
     }
 
-    snprintf (initFuncName, 256, "%sPayload_createImpl",  payloadName);
-
     /* Gives a warning - casting from void* to bridge_createImpl func */
-	vp = loadLibFunc (bridgeLib, initFuncName);
-   	initFunc  = *(msgPayload_createImpl*) &vp;
+    snprintf (initFuncName, 256, "%sPayload_createImpl",  payloadName);
+    vp = loadLibFunc (bridgeLib, initFuncName);
+    initFunc  = *(msgPayload_createImpl*) &vp;
 
     if (!initFunc)
     {
@@ -1887,7 +1926,7 @@ mama_loadPayloadBridgeInternal  (mamaPayloadBridge* impl,
 
     if (MAMA_STATUS_OK != (status = initFunc (impl, &payloadChar)))
     {
-       wthread_static_mutex_unlock (&gImpl.myLock);
+        wthread_static_mutex_unlock (&gImpl.myLock);
 
         return status;
     }
@@ -1910,13 +1949,19 @@ mama_loadPayloadBridgeInternal  (mamaPayloadBridge* impl,
              "Payload bridge %s already loaded",
              payloadName);
        
-         wthread_static_mutex_unlock (&gImpl.myLock);
+        wthread_static_mutex_unlock (&gImpl.myLock);
 
         return MAMA_STATUS_OK;
     }
 
+    /* Gives a warning - casting from void* to bridge_destroyImpl func */
+    snprintf (destroyFuncName, 256, "%sPayload_destroyImpl",  payloadName);
+    vp = loadLibFunc (bridgeLib, destroyFuncName);
+    destroyFunc = *(msgPayload_destroyImpl*) &vp;
+
     gImpl.myPayloads [(int)payloadChar] = *impl;
     gImpl.myPayloadLibraries [(int)payloadChar] = bridgeLib;
+    gImpl.myPayloadDestroyFuncs [(int)payloadChar] = destroyFunc;
 
     if (!gDefaultPayload)
     {

@@ -133,11 +133,34 @@ extern "C"
      */
     MAMAExpDLL
     extern mama_status
-    mama_loadBridge (mamaBridge* impl, const char*  middleware);
+    mama_loadBridge (mamaBridge* impl, 
+                     const char* middleware);
 
+    /**
+     * Load a payload bridge by its well-known library name string.  E.g. "wmsg"
+     * will load the WombatMsg payload, provided it exists on the system.
+     *
+     * @param bridge The payload bridge object.
+     * @param payloadName The well-known name of the payload library.
+     */
     MAMAExpDLL
     extern mama_status
-    mama_loadPayloadBridge (mamaPayloadBridge*  bridge,  const char* payloadName);
+    mama_loadPayloadBridge (mamaPayloadBridge* bridge, 
+                            const char*        payloadName);
+
+    /**
+     * Load a payload bridge by using the mamaPayloadType identifier.  This
+     * utilises mamaPayload_convertToLibString() in order to retrieve the
+     * well-known library string for the payload library, and this is then
+     * delegated to mama_loadPayloadBridge.
+     *
+     * @param bridge The payload bridge object.
+     * @param payload The payload enumeration identifier.
+     */
+    MAMAExpDLL
+    extern mama_status
+    mama_loadPayloadBridgeByType (mamaPayloadBridge* bridge,
+                                  mamaPayloadType    payload);
 
     /** Load the bridge specified by middleware string using the path specified by the user.
      * If the bridge has already been loaded then the existing bridge instance

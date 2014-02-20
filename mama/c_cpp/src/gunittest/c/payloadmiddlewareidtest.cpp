@@ -20,14 +20,9 @@ protected:
 
    virtual void TearDown(void);
 
-   typedef std::pair <mamaPayloadType, std::string> MamaPayloadPair;
-   typedef std::map  <mamaPayloadType, std::string> MamaPayloadMapType;
-
-   typedef std::pair <mamaMiddleware,  std::string> MamaMiddlewarePair;
-   typedef std::map  <mamaMiddleware,  std::string> MamaMiddlewareMapType;
-
-   MamaPayloadMapType     payloadTestData;
-   MamaMiddlewareMapType  middlewareTestData;
+   typedef std::pair <std::string,     std::string>    PayloadNameLib;
+   typedef std::map  <mamaPayloadType, PayloadNameLib> MamaPayloadMapType;
+   typedef std::map  <mamaMiddleware,  std::string>    MamaMiddlewareMapType;
 
 private:   
    void CreateTestData();
@@ -55,100 +50,81 @@ MamaEnumTestsC::TearDown()
 void
 MamaEnumTestsC::CreateTestData()
 {
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_V5,         "V5"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_AVIS,       "AVIS"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_TICK42BLP,  "TICK42BLP"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_FAST,       "FAST"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_RAI,        "rai"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_UMS,        "UMS"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_TICK42RMDS, "TICK42RMDS"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_QPID,       "QPID"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_TIBRV,      "TIBRV"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_IBMWFO,     "ibmwfo"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_ACTIV,      "activ"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_VULCAN,     "Vulcan"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_WOMBAT_MSG, "WombatMsg"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_EXEGY,      "EXEGY"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_SOLACE,     "solacemsg"));
-    payloadTestData.insert (MamaPayloadPair (MAMA_PAYLOAD_UNKNOWN,    "unknown"));
-
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_WMW,       "wmw"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_LBM,       "lbm"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_TIBRV,     "tibrv"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_AVIS,      "AVIS"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_TICK42BLP, "tick42blp"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_SOLACE,    "SOLACE"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_RAI,       "rai"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_QPID,      "QPID"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_EXEGY,     "exegy"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_IBMWFO,    "ibmwfo"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_ACTIV,     "activ"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_TICK42RMDS, "tick42rmds"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_UMS,       "ums"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_VULCAN,    "vulcan"));
-    middlewareTestData.insert (MamaMiddlewarePair (MAMA_MIDDLEWARE_UNKNOWN,   "unknown"));
 }
 
-
-TEST_F (MamaEnumTestsC, testPayloadConvertToString)
+TEST_F (MamaEnumTestsC, testPayloadStringConversions)
 {
+    MamaPayloadMapType testData;
+    testData[MAMA_PAYLOAD_ACTIV]      = PayloadNameLib ("activ",      "activmsg");
+    testData[MAMA_PAYLOAD_AVIS]       = PayloadNameLib ("AVIS",       "avismsg");
+    testData[MAMA_PAYLOAD_EXEGY]      = PayloadNameLib ("EXEGY",      "exegymsg");
+    testData[MAMA_PAYLOAD_FAST]       = PayloadNameLib ("FAST",       "fastmsg");
+    testData[MAMA_PAYLOAD_IBMWFO]     = PayloadNameLib ("ibmwfo",     "ibmwfomsg");
+    testData[MAMA_PAYLOAD_QPID]       = PayloadNameLib ("QPID",       "qpidmsg");
+    testData[MAMA_PAYLOAD_RAI]        = PayloadNameLib ("rai",        "raimsg");
+    testData[MAMA_PAYLOAD_SOLACE]     = PayloadNameLib ("solacemsg",  "solacemsg");
+    testData[MAMA_PAYLOAD_TIBRV]      = PayloadNameLib ("TIBRV",      "tibrvmsg");
+    testData[MAMA_PAYLOAD_TICK42BLP]  = PayloadNameLib ("TICK42BLP",  "tick42blpmsg");
+    testData[MAMA_PAYLOAD_TICK42RMDS] = PayloadNameLib ("TICK42RMDS", "tick42rmdsmsg");
+    testData[MAMA_PAYLOAD_UMS]        = PayloadNameLib ("UMS",        "umsmsg");
+    testData[MAMA_PAYLOAD_VULCAN]     = PayloadNameLib ("Vulcan",     "vulcanmsg");
+    testData[MAMA_PAYLOAD_WOMBAT_MSG] = PayloadNameLib ("WombatMsg",  "wmsg");
+    testData[MAMA_PAYLOAD_V5]         = PayloadNameLib ("V5",         "wcachemsg");
+    testData[MAMA_PAYLOAD_UNKNOWN]    = PayloadNameLib ("unknown",    "");
+
     MamaPayloadMapType::iterator itr;
-    bool passed = true;
 
-    for(itr = payloadTestData.begin(); itr != payloadTestData.end(); ++itr) {
+    for(itr = testData.begin(); itr != testData.end(); ++itr) {
     
-       mamaPayloadType payload   = (*itr).first;
-       std::string     expected  = (*itr).second;
+       mamaPayloadType payload = itr->first;
+       PayloadNameLib& namelib = itr->second;
+       const char*     name    = namelib.first.c_str();
+       const char*     library = namelib.second.c_str();
 
-       std::string actual = mamaPayload_convertToString (payload); 
+       // Override for unknown, mama returns NULL for unknown library (so that
+       // it prevents libraries from trying to load libmamaunknownmsg).
+       if (MAMA_PAYLOAD_UNKNOWN == payload)
+       {
+           library = NULL;
+       }
 
-       EXPECT_STREQ(actual.c_str(), expected.c_str());
+       // Check name/payload conversion
+       EXPECT_STREQ(name, mamaPayload_convertToString (payload));
+       EXPECT_EQ((char)payload, (char)mamaPayload_convertFromString (name));
 
-       if (actual != expected) 
-           passed = false;
+       // Check library/payload conversion
+       EXPECT_STREQ(library, mamaPayload_convertToLibString (payload));
+       EXPECT_EQ((char)payload, (char)mamaPayload_convertFromLibString (library));
     }
-
-    ASSERT_EQ( passed, true );
 }
 
-TEST_F (MamaEnumTestsC, testMiddlewareConvertToString)
+TEST_F (MamaEnumTestsC, testMiddlewareStringConversions)
 {
+    MamaMiddlewareMapType testData;
+    testData[MAMA_MIDDLEWARE_WMW]        = "wmw";
+    testData[MAMA_MIDDLEWARE_LBM]        = "lbm";
+    testData[MAMA_MIDDLEWARE_TIBRV]      = "tibrv";
+    testData[MAMA_MIDDLEWARE_AVIS]       = "AVIS";
+    testData[MAMA_MIDDLEWARE_TICK42BLP]  = "tick42blp";
+    testData[MAMA_MIDDLEWARE_SOLACE]     = "SOLACE";
+    testData[MAMA_MIDDLEWARE_RAI]        = "rai";
+    testData[MAMA_MIDDLEWARE_QPID]       = "QPID";
+    testData[MAMA_MIDDLEWARE_EXEGY]      = "exegy";
+    testData[MAMA_MIDDLEWARE_IBMWFO]     = "ibmwfo";
+    testData[MAMA_MIDDLEWARE_ACTIV]      = "activ";
+    testData[MAMA_MIDDLEWARE_TICK42RMDS] = "tick42rmds";
+    testData[MAMA_MIDDLEWARE_UMS]        = "ums";
+    testData[MAMA_MIDDLEWARE_VULCAN]     = "vulcan";
+    testData[MAMA_MIDDLEWARE_UNKNOWN]    = "unknown";
     MamaMiddlewareMapType::iterator itr;
-    bool passed = true;
 
-    for(itr = middlewareTestData.begin(); itr != middlewareTestData.end(); ++itr) {
+    for(itr = testData.begin(); itr != testData.end(); ++itr) {
     
-       mamaMiddleware middleware = (*itr).first;
-       std::string    expected   = (*itr).second;
+       mamaMiddleware middleware = itr->first;
+       const char*    name       = itr->second.c_str();
 
-       std::string actual = mamaMiddleware_convertToString (middleware); 
-
-       EXPECT_STREQ(actual.c_str(), expected.c_str());
-
-       if (actual != expected) 
-           passed = false;
+       EXPECT_STREQ(name, mamaMiddleware_convertToString (middleware));
+       EXPECT_EQ((char)middleware, (char)mamaMiddleware_convertFromString (name));
     }
-
-    ASSERT_EQ (passed, true);
 }
 
-TEST_F (MamaEnumTestsC, testMiddlewareConvertFromString)
-{
-    MamaMiddlewareMapType::iterator itr;
-    bool passed = true;
-
-    for (itr = middlewareTestData.begin(); itr != middlewareTestData.end(); itr++) {
-
-        mamaMiddleware expected    = (*itr).first;
-        std::string    middleware  = (*itr).second;
-
-        mamaMiddleware actual      = mamaMiddleware_convertFromString (middleware.c_str());
-
-        EXPECT_EQ (actual, expected);
-
-        if (actual != expected)
-            passed = false;
-    }
-
-    ASSERT_EQ (passed, true);
-}

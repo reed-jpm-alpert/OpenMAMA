@@ -41,13 +41,39 @@
 
 #include "wombat/wincompat.h"
 
-
 #define MAX_SUBJECT 256
 
-#define NOFID 0
+typedef struct PayloadTable
+{
+    mamaPayloadType mType;
+    const char*     mName;
+    const char*     mLibrary;
+} 
+PayloadTable;
 
-static const int INCLUDE_FIELD_NAME = (1 << 4);
-static const int INCLUDE_FIELD_ID   = (1 << 2);
+static
+const PayloadTable kPayloads [] = 
+{
+    {MAMA_PAYLOAD_ACTIV,      "activ",      "activmsg"},
+    {MAMA_PAYLOAD_AVIS,       "AVIS",       "avismsg"},
+    {MAMA_PAYLOAD_EXEGY,      "EXEGY",      "exegymsg"},
+    {MAMA_PAYLOAD_FAST,       "FAST",       "fastmsg"},
+    {MAMA_PAYLOAD_IBMWFO,     "ibmwfo",     "ibmwfomsg"},
+    {MAMA_PAYLOAD_INRUSH,     "INRUSH",     "inrushmsg"},
+    {MAMA_PAYLOAD_QPID,       "QPID",       "qpidmsg"},
+    {MAMA_PAYLOAD_RAI,        "rai",        "raimsg"},
+    {MAMA_PAYLOAD_SOLACE,     "solacemsg",  "solacemsg"},
+    {MAMA_PAYLOAD_TIBRV,      "TIBRV",      "tibrvmsg"},
+    {MAMA_PAYLOAD_TICK42BLP,  "TICK42BLP",  "tick42blpmsg"},
+    {MAMA_PAYLOAD_TICK42RMDS, "TICK42RMDS", "tick42rmdsmsg"},
+    {MAMA_PAYLOAD_UMS,        "UMS",        "umsmsg"},
+    {MAMA_PAYLOAD_V5,         "V5",         "wcachemsg"},
+    {MAMA_PAYLOAD_VULCAN,     "Vulcan",     "vulcanmsg"},
+    {MAMA_PAYLOAD_WOMBAT_MSG, "WombatMsg",  "wmsg"},
+
+    /* Linear search requires unknown to be at the end-of-table */
+    {MAMA_PAYLOAD_UNKNOWN,    "unknown",    NULL}
+};
 
 typedef struct mamaMsgIteratorImpl
 {
@@ -105,6 +131,66 @@ typedef struct mamaMsgImpl_
   ===============================================================*/
 static mama_status
 mamaMsgImpl_destroyLastVectorMsg (mamaMsgImpl *impl);
+
+static
+const PayloadTable*
+mamaPayloadImpl_lookupTableByType (mamaPayloadType payloadType)
+{
+    int k = 0;
+    for (; kPayloads[k].mType != MAMA_PAYLOAD_UNKNOWN; ++k)
+    {
+        if (kPayloads[k].mType == payloadType)
+        {
+            break;
+        }
+    }
+
+    return &kPayloads[k];
+}
+
+static
+const PayloadTable*
+mamaPayloadImpl_lookupTableByName (const char* name)
+{
+    int k = 0;
+
+    if (!name)
+    {
+        return &kPayloads[sizeof(kPayloads)/sizeof(kPayloads[0])-1];
+    }
+
+    for (; kPayloads[k].mType != MAMA_PAYLOAD_UNKNOWN; ++k) 
+    {
+        if (0 == strcasecmp (name, kPayloads[k].mName))
+        {
+            break;
+        }
+    }
+
+    return &kPayloads[k];
+}
+
+static
+const PayloadTable*
+mamaPayloadImpl_lookupTableByLibrary (const char* name)
+{
+    int k = 0;
+
+    if (!name)
+    {
+        return &kPayloads[sizeof(kPayloads)/sizeof(kPayloads[0])-1];
+    }
+
+    for (; kPayloads[k].mType != MAMA_PAYLOAD_UNKNOWN; ++k) 
+    {
+        if (0 == strcasecmp (name, kPayloads[k].mLibrary))
+        {
+            break;
+        }
+    }
+
+    return &kPayloads[k];
+}
 
 /*=================================================================
   = Public functions - defined in mama/msg.h
@@ -166,7 +252,9 @@ mamaMsg_destroy (mamaMsg msg)
     if (impl->mCurrentField)
     {
         mamaMsgField_destroy (impl->mCurrentField);
+        impl->mCurrentField = NULL;
     }
+
     /*Destroy the reusable field object*/
     if (impl->mCopy)
     {
@@ -366,44 +454,29 @@ mamaMsgImpl_getPayload (const mamaMsg msg, msgPayload* payload)
 const char*
 mamaPayload_convertToString (mamaPayloadType payloadType)
 {
-    switch (payloadType)
-    {
-        case MAMA_PAYLOAD_SOLACE:
-            return "solacemsg";
-        case MAMA_PAYLOAD_V5:
-            return "V5";
-        case MAMA_PAYLOAD_AVIS:
-            return "AVIS";
-        case MAMA_PAYLOAD_TICK42BLP:
-            return "TICK42BLP";
-        case MAMA_PAYLOAD_FAST:
-            return "FAST";
-        case MAMA_PAYLOAD_RAI:
-            return "rai";
-        case MAMA_PAYLOAD_UMS:
-            return "UMS";
-        case MAMA_PAYLOAD_TICK42RMDS:
-            return "TICK42RMDS";
-        case MAMA_PAYLOAD_QPID:
-            return "QPID";
-        case MAMA_PAYLOAD_TIBRV:
-            return "TIBRV";
-        case MAMA_PAYLOAD_IBMWFO:
-            return "ibmwfo";
-        case MAMA_PAYLOAD_ACTIV:
-            return "activ";
-        case MAMA_PAYLOAD_VULCAN:
-            return "Vulcan";
-        case MAMA_PAYLOAD_WOMBAT_MSG:
-            return "WombatMsg";
-        case MAMA_PAYLOAD_EXEGY:
-            return "EXEGY";
-        case MAMA_PAYLOAD_INRUSH:
-            return "INRUSH";
+    const PayloadTable* table = mamaPayloadImpl_lookupTableByType (payloadType);
+    return table->mName;
+}
 
-        default:
-            return "unknown";
-    }
+mamaPayloadType
+mamaPayload_convertFromString (const char* str)
+{
+    const PayloadTable* table = mamaPayloadImpl_lookupTableByName (str);
+    return table->mType;
+}
+
+const char*
+mamaPayload_convertToLibString (mamaPayloadType payloadType)
+{
+    const PayloadTable* table = mamaPayloadImpl_lookupTableByType (payloadType);
+    return table->mLibrary;
+}
+
+mamaPayloadType
+mamaPayload_convertFromLibString (const char* str)
+{
+    const PayloadTable* table = mamaPayloadImpl_lookupTableByLibrary (str);
+    return table->mType;
 }
 
 mama_status
@@ -3481,7 +3554,11 @@ mama_status mamaMsgIterator_destroy (mamaMsgIterator iterator)
     }
 
     if (impl->mCurrentField)
+    {
         mamaMsgField_destroy (impl->mCurrentField);
+        impl->mCurrentField = NULL;
+    }
+
     free (impl);
     return MAMA_STATUS_OK;
 }

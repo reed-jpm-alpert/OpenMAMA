@@ -74,6 +74,36 @@ extern const char*
 mamaPayload_convertToString (mamaPayloadType payloadType);
 
 /**
+ * Convert a string to a mamaPayloadType.
+ *
+ * @param str The str to convert.
+ */
+MAMAExpDLL
+extern mamaPayloadType
+mamaPayload_convertFromString (const char* str);
+
+/**
+ * Convert a mamaPayloadType value to a well-known library name string
+ * for that payload.  E.g. MAMA_PAYLOAD_WOMBAT_MSG translates into
+ * "wmsg" (of which the payload library would be libwmsgimpl.so on *nix).
+ *
+ * @param payloadType The payloadType to convert to a library name string.
+ */
+MAMAExpDLL
+extern const char*
+mamaPayload_convertToLibString (mamaPayloadType payloadType);
+
+/**
+ * Convert a well-known library name to a mamaPayloadType value
+ * for that payload.  E.g. "wmsg" translates into MAMA_PAYLOAD_WOMBAT_MSG.
+ *
+ * @param str The library name string to convert to a mamaPayloadType.
+ */
+MAMAExpDLL
+extern mamaPayloadType
+mamaPayload_convertFromLibString (const char* str);
+
+/**
  * Create a mamaMsg.
  *
  * @param msg The location of a mamaMsg where to store the result.

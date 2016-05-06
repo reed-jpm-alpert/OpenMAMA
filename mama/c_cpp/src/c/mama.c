@@ -247,12 +247,6 @@ mama_loadPayloadBridgeInternal  (mamaPayloadBridge* impl,
 mama_status
 mama_loadEntitlementBridgeInternal  (const char* name);
 
-void MAMACALLTYPE mamaImpl_entitlementDisconnectCallback (
-                            const sessionDisconnectReason  reason,
-                            const char * const             userId,
-                            const char * const             host,
-                            const char * const             appName);
-
 MAMAExpDLL
 void
 mama_setWrapperGetVersion(fpWrapperGetVersion value);
@@ -1460,6 +1454,9 @@ mama_closeCount (unsigned int* count)
 
         /* Once the libraries have been unloaded, clear down the wtable. */
         wtable_clear (gImpl.payloads.table);
+
+        /* This will shutdown all plugins */
+        mama_shutdownPlugins();
 
         /* Reset the count of loaded payloads */
         gImpl.payloads.count = 0;
